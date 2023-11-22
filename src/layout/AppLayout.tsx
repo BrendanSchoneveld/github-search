@@ -2,6 +2,7 @@ import React, {FunctionComponent, PropsWithChildren} from 'react'
 import {Footer, GlobalStyle, Header, Main} from "./styles";
 import {Outlet} from "react-router-dom";
 import Navigation from "./navigation/Navigation";
+import {SearchProvider} from "../globals/contexts/SearchContext";
 
 interface IProps {
 }
@@ -15,10 +16,12 @@ const AppLayout: FunctionComponent<PropsWithChildren<IProps>> = () => {
                         <Navigation/>
                     </Header>
 
-                    <Main>
-                        {/* Render all pages within the main content */}
-                        <Outlet/>
-                    </Main>
+            <SearchProvider>
+                <Main>
+                    {/* Render all pages within the main content */}
+                    <Outlet/>
+                </Main>
+            </SearchProvider>
 
                     <Footer>
 

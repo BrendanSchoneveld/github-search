@@ -15,7 +15,7 @@ const Navigation: FunctionComponent<IProps> = () => {
             {iterableRoutes.map(({ path }) => {
                 if (!path || path.length < 2) return null
 
-                return <NavigationLink isActive={location.pathname.endsWith(path)} key={path} to={path}>{path}</NavigationLink>
+                return <NavigationLink isActive={location.pathname.endsWith(path)} aria-label={path} key={path} to={path}>{path}</NavigationLink>
             })}
         </NavigationWrapper>
     )
