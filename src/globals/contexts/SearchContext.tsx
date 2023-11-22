@@ -99,18 +99,19 @@ export const SearchProvider: FunctionComponent<PropsWithChildren<IProps>> = ({ch
         forks: SortingOrder.DESCENDING,
     })
 
-    const handleSortGithubRepoList = (propertyName: 'forks' | 'stargazers_count', order: SortingOrder) => {
+    const handleSortGithubRepoList = useCallback((propertyName: 'forks' | 'stargazers_count', order: SortingOrder) => {
+        // Clone to prevent mutation
         const clonedGithubRepoList = [...githubRepoList]
-
+        // Sort based on required order
         clonedGithubRepoList.sort((a, b) => order === SortingOrder.ASCENDING ? a[propertyName] - b[propertyName] : b[propertyName] - a[propertyName])
-
-        setGithubRepoList([...clonedGithubRepoList])
-
+        // Update sorting
         setSortingData((prevState) => ({
             ...prevState,
             [propertyName]: order === SortingOrder.ASCENDING ? SortingOrder.DESCENDING : SortingOrder.ASCENDING
         }))
-    }
+        // Spread into state
+        setGithubRepoList([...clonedGithubRepoList])
+    }, [githubRepoList, SortingOrder])
     /*
     * ****************************************************************************************************************
     * */
