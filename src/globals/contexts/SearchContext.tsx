@@ -1,14 +1,16 @@
 import React, {
+    ChangeEvent,
     createContext,
     FunctionComponent,
     PropsWithChildren,
-    useMemo,
-    useState,
+    useCallback,
     useEffect,
-    useCallback, ChangeEvent
+    useMemo,
+    useState
 } from 'react';
 import {octokit} from "../configs/octokitConfig";
 import useDebounce from "../hooks/useDebounce";
+import {SortingOrder} from "../../components/elements/buttons/SortingButton/SortingButton";
 
 export type ColumnData = {
     id: string;
@@ -27,6 +29,11 @@ export type GithubEntry = {
     watchers: number
 }
 
+export type SortingData = {
+    stargazers_count: SortingOrder
+    forks: SortingOrder
+}
+
 interface IContextState {
     searchQuery: string
     debouncedSearchQuery: string;
@@ -35,6 +42,8 @@ interface IContextState {
     handleInputChange: (e: ChangeEvent<HTMLInputElement>) => void
     setDebouncedSearchQuery: React.Dispatch<React.SetStateAction<string>>;
     tableColumns: ColumnData[]
+    sortingData: SortingData
+    handleSortGithubRepoList: (propertyName: 'forks' | 'stargazers_count', order: SortingOrder) => void
 }
 
 const checkIfFieldShouldBeSortable = (key: string): boolean => {
@@ -82,6 +91,29 @@ export const SearchProvider: FunctionComponent<PropsWithChildren<IProps>> = ({ch
     useDebounce(() => setDebouncedSearchQuery(searchQuery))
     const [isPending, setIsPending] = useState<boolean>(false)
     const [githubRepoList, setGithubRepoList] = useState<GithubEntry[]>([])
+    /*
+    * Sorting by stars and forks
+    * */
+    const [sortingData, setSortingData] = useState<SortingData>({
+        stargazers_count: SortingOrder.DESCENDING,
+        forks: SortingOrder.DESCENDING,
+    })
+
+    const handleSortGithubRepoList = (propertyName: 'forks' | 'stargazers_count', order: SortingOrder) => {
+        const clonedGithubRepoList = [...githubRepoList]
+
+        clonedGithubRepoList.sort((a, b) => order === SortingOrder.ASCENDING ? a[propertyName] - b[propertyName] : b[propertyName] - a[propertyName])
+
+        setGithubRepoList([...clonedGithubRepoList])
+
+        setSortingData((prevState) => ({
+            ...prevState,
+            [propertyName]: order === SortingOrder.ASCENDING ? SortingOrder.DESCENDING : SortingOrder.ASCENDING
+        }))
+    }
+    /*
+    * ****************************************************************************************************************
+    * */
 
     const baseQueryParams = 'in:readme in:name in:description in:topics'
     // const q = 'q=' + encodeURIComponent(`${debouncedSearchQuery} in:readme in:name in:description in:topics`);
@@ -163,7 +195,9 @@ export const SearchProvider: FunctionComponent<PropsWithChildren<IProps>> = ({ch
             handleInputChange,
             setDebouncedSearchQuery,
             tableColumns,
-        }), [searchQuery, debouncedSearchQuery, isPending, handleInputChange])}>
+            sortingData,
+            handleSortGithubRepoList,
+        }), [searchQuery, debouncedSearchQuery, isPending, handleInputChange, sortingData])}>
             {children}
         </Provider>
     );

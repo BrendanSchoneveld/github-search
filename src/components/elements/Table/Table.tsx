@@ -2,6 +2,7 @@ import React, {FunctionComponent, ReactNode} from 'react'
 import {GithubEntry} from "../../../globals/contexts/SearchContext";
 import {useSearchContext} from "../../../globals/hooks/useSearchContext";
 import {StyledTable, TableBodyCell, TableHeadCell, TableRow} from "./styles";
+import SortingButton from "../buttons/SortingButton/SortingButton";
 
 interface IProps {
 }
@@ -32,9 +33,10 @@ const Table: FunctionComponent<IProps> = () => {
             </colgroup>
             <thead>
             <TableRow>
-                {tableColumns.map(({id, label}) => (
+                {tableColumns.map(({id, label, isSortable}) => (
                     <TableHeadCell key={id}>
-                        {label}
+                        {label} {isSortable && (label === 'stargazers_count' || label === 'forks') &&
+                        <SortingButton label={label} />}
                     </TableHeadCell>
                 ))}
             </TableRow>
