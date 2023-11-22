@@ -1,6 +1,6 @@
 import React, {ChangeEvent, FunctionComponent, useId} from 'react'
 import {Label, StyledSearchInput} from "./styles";
-import {useSearchContext} from "../../../globals/hooks/useSearchContext";
+import {useSearchContext} from "../../../../globals/hooks/useSearchContext";
 
 interface IProps {
 }

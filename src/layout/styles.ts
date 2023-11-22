@@ -36,4 +36,12 @@ export const PageLayoutWrapper = styled.div`
   margin: 0 auto;
   padding: 15px;
 `
+export const EmptyPlaceholder = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: inherit;
+  width: inherit;
+`
+
 

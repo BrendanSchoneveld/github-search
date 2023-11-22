@@ -10,6 +10,12 @@ import React, {
 import {octokit} from "../configs/octokitConfig";
 import useDebounce from "../hooks/useDebounce";
 
+export type ColumnData = {
+    id: string;
+    label: string;
+    isSortable: boolean
+}
+
 export type GithubEntry = {
     id: number;
     name: string;
@@ -28,6 +34,36 @@ interface IContextState {
     githubRepoList: any[]
     handleInputChange: (e: ChangeEvent<HTMLInputElement>) => void
     setDebouncedSearchQuery: React.Dispatch<React.SetStateAction<string>>;
+    tableColumns: ColumnData[]
+}
+
+const checkIfFieldShouldBeSortable = (key: string): boolean => {
+    switch (key) {
+        case 'stargazers_count':
+        case 'forks':
+            return true
+        default:
+            return false
+    }
+}
+
+const generateColumnHeadersFromData = (data: GithubEntry[]): ColumnData[] => {
+    const columnData: ColumnData[] = []
+
+    for (const rowData of data) {
+        // Break out of the loop once the required data is available and can be returned
+        if (columnData.length) return columnData
+
+        for (const key of Object.keys(rowData)) {
+            columnData.push({
+                id: key,
+                label: key,
+                isSortable: checkIfFieldShouldBeSortable(key)
+            })
+        }
+    }
+
+    return columnData
 }
 
 export const SearchContext = createContext<IContextState | undefined>(undefined);
@@ -107,6 +143,7 @@ export const SearchProvider: FunctionComponent<PropsWithChildren<IProps>> = ({ch
         })()
 
         return () => abortController.abort();
+        // We only want this to run when the debouncedQuery updates to prevent to many calls
     }, [debouncedSearchQuery])
 
     const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>): void => {
@@ -114,6 +151,8 @@ export const SearchProvider: FunctionComponent<PropsWithChildren<IProps>> = ({ch
 
         setSearchQuery(inputValue)
     }, [searchQuery]);
+
+    const tableColumns = useMemo(() => generateColumnHeadersFromData(githubRepoList), [githubRepoList])
 
     return (
         <Provider value={useMemo(() => ({
@@ -123,6 +162,7 @@ export const SearchProvider: FunctionComponent<PropsWithChildren<IProps>> = ({ch
             githubRepoList,
             handleInputChange,
             setDebouncedSearchQuery,
+            tableColumns,
         }), [searchQuery, debouncedSearchQuery, isPending, handleInputChange])}>
             {children}
         </Provider>
