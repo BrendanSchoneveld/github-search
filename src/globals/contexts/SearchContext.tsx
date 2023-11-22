@@ -10,6 +10,7 @@ import React, {
 } from 'react';
 import {octokit} from "../configs/octokitConfig";
 import useDebounce from "../hooks/useDebounce";
+import {useLocation, useNavigate} from "react-router-dom";
 import {SortingOrder} from "../../components/elements/buttons/SortingButton/SortingButton";
 
 export type ColumnData = {
@@ -26,13 +27,15 @@ export type GithubEntry = {
     forks: number;
     stargazers_count: number;
     language: string | null;
-    watchers: number
 }
 
 export type SortingData = {
     stargazers_count: SortingOrder
     forks: SortingOrder
 }
+
+// Additional search parameters should include the number of followers, number of stars, and language.
+const FILTER_TYPES = ['followers', 'stargazers_count', 'language'];
 
 interface IContextState {
     searchQuery: string
@@ -44,6 +47,12 @@ interface IContextState {
     tableColumns: ColumnData[]
     sortingData: SortingData
     handleSortGithubRepoList: (propertyName: 'forks' | 'stargazers_count', order: SortingOrder) => void
+    filters: {
+        [key: string]: boolean
+    }
+    handleToggleFilter: (filterType: string) => void
+    searchHistory: string[]
+    handleShowPreviousResults: (query: string) => void
 }
 
 const checkIfFieldShouldBeSortable = (key: string): boolean => {
@@ -75,6 +84,16 @@ const generateColumnHeadersFromData = (data: GithubEntry[]): ColumnData[] => {
     return columnData
 }
 
+const generateFiltersFromKeys = (filterTypes: string[]): { [key: string]: boolean } => {
+    const filterTypeObj: { [key: string]: boolean } = {}
+
+    filterTypes.forEach(filterType => {
+        filterTypeObj[filterType] = false
+    })
+
+    return filterTypeObj
+}
+
 export const SearchContext = createContext<IContextState | undefined>(undefined);
 const {Provider} = SearchContext;
 
@@ -82,6 +101,8 @@ interface IProps {
 }
 
 export const SearchProvider: FunctionComponent<PropsWithChildren<IProps>> = ({children}) => {
+    const navigate = useNavigate()
+    const location = useLocation()
     /*
     * SearchPage related state
     * */
@@ -116,8 +137,62 @@ export const SearchProvider: FunctionComponent<PropsWithChildren<IProps>> = ({ch
     * ****************************************************************************************************************
     * */
 
+    /*
+    * Filter options
+    * */
+    const [filters, setFilters] = useState(() => generateFiltersFromKeys(FILTER_TYPES))
+
+    const handleToggleFilter = useCallback((filterType: string): void => setFilters((prevState) => ({
+        ...prevState,
+        [filterType]: !prevState[filterType]
+    })), [filters])
+
+    const formattedQueryString = useCallback((): string => {
+        let query = `${debouncedSearchQuery} ${baseQueryParams}`
+        for (const filterKey of Object.keys(filters)) {
+            if (filters[filterKey]) {
+                query += ` in:${filterKey}`
+            }
+        }
+        return query
+    }, [filters, debouncedSearchQuery])
+    /*
+    * ****************************************************************************************************************
+    * */
+
+    /*
+    * Query history
+    * */
+    const [searchHistoryQuery, setSearchHistoryQuery] = useState<string>()
+    // Listing of all previously searched queries of the user
+    const [searchHistory, setSearchHistory] = useState<string[]>([]);
+
+    const updateSearchHistory = useCallback((searchQuery: string): void => setSearchHistory((prevState) => [...prevState, searchQuery]), [debouncedSearchQuery])
+
+    const handleShowPreviousResults = useCallback((query: string): void => {
+        navigate('/search')
+
+        // alert('Did not have time anymore to implement this feature')
+        setSearchQuery(query)
+        setSearchHistoryQuery(query)
+        setDebouncedSearchQuery(query)
+    }, [searchHistoryQuery]);
+    /*
+    * ****************************************************************************************************************
+    * */
+
+    const clearQueryState = () => {
+        setSearchQuery('')
+        setDebouncedSearchQuery('')
+        setGithubRepoList([])
+    }
+
+    useEffect(() => {
+        // Clear query state when navigating to browser history
+        clearQueryState()
+    }, [location.pathname])
+
     const baseQueryParams = 'in:readme in:name in:description in:topics'
-    // const q = 'q=' + encodeURIComponent(`${debouncedSearchQuery} in:readme in:name in:description in:topics`);
 
     useEffect(() => {
         // If searchbar is emptied, set data list to empty array
@@ -128,12 +203,19 @@ export const SearchProvider: FunctionComponent<PropsWithChildren<IProps>> = ({ch
 
         setIsPending(true)
         // Format query string
-        let query = `${debouncedSearchQuery} ${baseQueryParams}`
+        let query: string
+
+        if (searchHistoryQuery?.length) {
+            // Only show first 10 results in this query
+            query = `${searchHistoryQuery} per_page:10`
+            setDebouncedSearchQuery(searchHistoryQuery)
+        } else {
+            query = formattedQueryString()
+        }
 
         const abortController = new AbortController();
 
         (async () => {
-            console.log()
             try {
                 const response = await octokit.request('GET /search/repositories', {
                     headers: {
@@ -152,8 +234,7 @@ export const SearchProvider: FunctionComponent<PropsWithChildren<IProps>> = ({ch
                                                                    topics,
                                                                    forks,
                                                                    stargazers_count,
-                                                                   language,
-                                                                   watchers
+                                                                   language
                                                                }) => ({
                     id,
                     name,
@@ -161,11 +242,17 @@ export const SearchProvider: FunctionComponent<PropsWithChildren<IProps>> = ({ch
                     topics,
                     forks,
                     stargazers_count,
-                    language,
-                    watchers
+                    language
                 }))
 
                 setGithubRepoList([...formattedData])
+
+                // Update history list when it is not coming form the history page
+                if (searchHistoryQuery?.length) {
+                    setSearchHistoryQuery('')
+                } else {
+                    updateSearchHistory(query)
+                }
 
             } catch (error) {
                 alert('Something went wrong. Could not fetch data')
@@ -177,7 +264,7 @@ export const SearchProvider: FunctionComponent<PropsWithChildren<IProps>> = ({ch
 
         return () => abortController.abort();
         // We only want this to run when the debouncedQuery updates to prevent to many calls
-    }, [debouncedSearchQuery])
+    }, [debouncedSearchQuery, filters])
 
     const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>): void => {
         const inputValue = e.target.value
@@ -198,7 +285,11 @@ export const SearchProvider: FunctionComponent<PropsWithChildren<IProps>> = ({ch
             tableColumns,
             sortingData,
             handleSortGithubRepoList,
-        }), [searchQuery, debouncedSearchQuery, isPending, handleInputChange, sortingData])}>
+            filters,
+            handleToggleFilter,
+            searchHistory,
+            handleShowPreviousResults
+        }), [searchQuery, debouncedSearchQuery, isPending, handleInputChange, sortingData, filters, searchHistory])}>
             {children}
         </Provider>
     );

@@ -5,3 +5,10 @@ export const SearchInputWrapper = styled.div`
   width: 600px;
   margin: 24px auto 48px;
 `
+
+export const FilterWrapper = styled.div`
+  position: relative;
+  width: 800px;
+  margin: 24px auto 48px;
+`
+

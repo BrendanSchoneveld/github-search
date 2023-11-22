@@ -7,7 +7,7 @@ export enum SortingOrder {
     ASCENDING = 'ascending',
 }
 interface IProps {
-    label: 'stargazers_count' | 'forks'
+    label: 'forks' | 'stargazers_count'
 }
 
 const SortingButton: FunctionComponent<IProps> = ({ label }) => {
